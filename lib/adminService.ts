@@ -2,12 +2,12 @@ import crypto from "crypto"
 import { DiscountCode, Money, Store } from "./types"
 import { BadRequestError } from "./cartService"
 
-function makeCode(prefix: string, len: number): string {
+export function makeCode(prefix: string, len: number): string {
   const raw = crypto.randomBytes(16).toString("hex").toUpperCase()
   return `${prefix}-${raw.slice(0, len)}`
 }
 
-function expireActiveIfStale(store: Store): void {
+export function expireActiveIfStale(store: Store): void {
   const active = store.activeDiscountCode
   if (!active) return
   if (active.status !== "active") {
