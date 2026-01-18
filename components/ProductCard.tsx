@@ -10,6 +10,8 @@ export type Product = {
   price: number
 }
 
+const PRODUCT_IMAGE_URL = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"
+
 export default function ProductCard({ product }: { product: Product }) {
   const { addToCart, isLoading } = useCart()
   const [qty, setQty] = useState(1)
@@ -26,13 +28,17 @@ export default function ProductCard({ product }: { product: Product }) {
         gap: 10,
       }}
     >
-      <div
+      <img
+        src={PRODUCT_IMAGE_URL}
+        alt={product.name}
+        loading="lazy"
         style={{
           height: 120,
+          width: "100%",
+          objectFit: "cover",
           borderRadius: 12,
           border: "1px solid #f0f0f0",
-          background:
-            "linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))",
+          background: "#fafafa",
         }}
       />
 
@@ -65,9 +71,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
         <button
           disabled={isLoading}
-          onClick={() =>
-            addToCart({ sku: product.sku, name: product.name, price: product.price, qty })
-          }
+          onClick={() => addToCart({ sku: product.sku, name: product.name, price: product.price, qty })}
           style={{
             marginLeft: "auto",
             padding: "10px 12px",
