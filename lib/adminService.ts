@@ -21,30 +21,44 @@ function expireActiveIfStale(store: Store): void {
   }
 }
 
-export function generateDiscountCode(store: Store): { code: DiscountCode } {
-  // if Nth order just happened a code can be generated.
-  if (store.orderCount <= 0 || store.orderCount % store.discountEveryN !== 0) {
-    throw new BadRequestError(`Not eligible yet. Generate is allowed only on every ${store.discountEveryN}th order.`)
-  }
-
-  // if there's an active unused code don't allow generating another.
-  if (store.activeDiscountCode && store.activeDiscountCode.status === "active") {
-    throw new BadRequestError("A discount code is already active")
-  }
-
-  // also prevent generating multiple codes for the same milestone, even if the first was used.
-  const alreadyGeneratedForThisMilestone = store.discountCodes.some((c) => c.unlockedAtOrderNumber === store.orderCount)
-  if (alreadyGeneratedForThisMilestone) {
-    throw new BadRequestError("Discount code for this milestone was already generated")
-  }
-
+export function generateDiscountCode(store: Store): { code: DiscountCode; alreadyExisted?: boolean } {
   expireActiveIfStale(store)
 
+  if (store.orderCount <= 0) {
+    throw new BadRequestError("Not eligible yet. No orders have been placed.")
+  }
+
+  const n = store.discountEveryN
+  const milestone = Math.floor(store.orderCount / n) * n
+
+  if (milestone <= 0) {
+    throw new BadRequestError(`Not eligible yet. First code unlocks at order ${n}.`)
+  }
+
+  // if there is an active code, return it (idempotent).
+  if (store.activeDiscountCode?.status === "active") {
+    return { code: store.activeDiscountCode, alreadyExisted: true }
+  }
+
+  // if a code already exists for this milestone...
+  const existingForMilestone = store.discountCodes.find((c) => c.unlockedAtOrderNumber === milestone)
+  if (existingForMilestone) {
+    // ...return it ONLY if it's still active, otherwise not
+    if (existingForMilestone.status === "active") {
+      store.activeDiscountCode = existingForMilestone
+      return { code: existingForMilestone, alreadyExisted: true }
+    }
+
+    const nextAt = milestone + n
+    throw new BadRequestError(`Discount for order ${milestone} was already ${existingForMilestone.status}. Next code unlocks at order ${nextAt}.`)
+  }
+
+  // otherwise generate a fresh active code for the current milestone.
   const code: DiscountCode = {
     code: makeCode("SAVE10", 6),
     percent: 10,
     status: "active",
-    unlockedAtOrderNumber: store.orderCount,
+    unlockedAtOrderNumber: milestone,
   }
 
   store.discountCodes.push(code)

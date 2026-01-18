@@ -36,6 +36,15 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null)
 
+function normalizeCart(raw: any): Cart | null {
+  const c = raw?.cart ?? raw
+  if (!c || !Array.isArray(c.items)) return null
+
+  const subtotal = typeof c.subtotal === "number" ? c.subtotal : c.items.reduce((sum: number, i: CartItem) => sum + i.price * i.qty, 0)
+
+  return { userId: c.userId, items: c.items, subtotal }
+}
+
 function makeId() {
   try {
     return crypto.randomUUID()
@@ -85,7 +94,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    setCart(r.data?.cart ?? r.data ?? null)
+    setCart(normalizeCart(r.data))
     setIsLoading(false)
   }, [userId])
 
@@ -105,10 +114,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      setCart(r.data?.cart ?? null)
+      setCart(normalizeCart(r.data))
       setIsLoading(false)
     },
-    [userId]
+    [userId],
   )
 
   useEffect(() => {
@@ -120,7 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo(
     () => ({ userId, setUserId, cart, itemCount, isLoading, error, refreshCart, addToCart }),
-    [userId, setUserId, cart, itemCount, isLoading, error, refreshCart, addToCart]
+    [userId, setUserId, cart, itemCount, isLoading, error, refreshCart, addToCart],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
